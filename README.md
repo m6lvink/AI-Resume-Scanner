@@ -1,53 +1,71 @@
-# AI-Resume-Scanner: Python Resume Scanner 
+# Resume Matcher
 
-A small Python project that provides tools to scan resumes and extract structured information using AI-assisted methods.
+AI-powered resume analyzer that compares your resume against job descriptions using semantic similarity and keyword matching.
 
-Why it exists
-- Convert unstructured resumes into structured data to reduce manual screening time.
-- Provide a foundation for building automated resume scoring, parsing, or extraction workflows.
-- Quick check to see if your resume is "optimal" for a position
+## Setup
 
-Quick start
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/m6lvink/AI-Resume-Scanner.git
-cd AI-Resume-Scanner
+pip install -r requirements.txt
 ```
 
-2. Create and activate a virtual environment:
+First run downloads the AI model (80MB) - takes 10-20 seconds.
+
+## Usage
+
+### Web UI
 ```bash
-python -m venv .venv
-# macOS / Linux
-source .venv/bin/activate
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
+streamlit run app.py
 ```
+Opens browser at `http://localhost:8501`
 
-3. Install dependencies:
-   
+Features:
+- Drag and drop PDF upload
+- Real-time match scoring
+- Categorized skills (languages, frameworks, tools, databases)
+- Visual progress bars and metrics
+- Download results as text file
+
+### Command Line
 ```bash
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+python main.py
 ```
+- Paste job description (press ENTER twice to finish)
+- Enter path to PDF resume
+- View match score and keyword analysis
 
-## Edits
-Below are general examples you can adapt in the code:
+## How It Works
 
-- Run as a module (replace `resume_scan` with the actual module name if present):
-```bash
-python -m resume_scan path/to/resume.pdf
-```
+1. PDF Parsing: Extracts text from resume PDF
+2. Semantic Analysis: Uses sentence transformers (MiniLM model) to calculate similarity score (0-100%)
+3. Keyword Matching: Extracts technical terms and compares job requirements vs resume
+4. Gap Analysis: Shows which skills you have and which are missing
 
-- Import from Python and run a scanner class or function (replace names with actual ones found in the code):
-```python
-from resume_scan import Scanner
+## Files
 
-scanner = Scanner()
-result = scanner.scan("resume.pdf")
-print(result)
-```
+- `app.py` - Streamlit web interface with drag-and-drop
+- `main.py` - Command line interface
+- `resumeParser.py` - PDF text extraction
+- `matcher.py` - AI scoring and keyword analysis
+- `requirements.txt` - Python dependencies
 
-Links
-- Issues: https://github.com/m6lvink/AI-Resume-Scanner/issues
-- Repository: https://github.com/m6lvink/AI-Resume-Scanner
+## Performance
+
+- Web UI: 2-4 seconds per analysis (after model loads)
+- Model load: 10-20 seconds on first run (cached after)
+- PDF parsing: <1 second for typical resumes
+- Max file size: 50MB
+
+## Limitations
+
+- PDF only (no DOCX support yet)
+- Image-based/scanned PDFs need OCR (not included)
+- Encrypted PDFs not supported
+- English language only
+
+## Tips
+
+- Use specific technical terms from job posting in resume
+- Add missing keywords naturally to your experience sections
+- 75%+ match = strong alignment
+- 60-75% = good match
+- <60% = consider tailoring resume more
