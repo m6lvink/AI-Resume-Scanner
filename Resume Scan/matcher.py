@@ -3,9 +3,9 @@ import re
 
 #Model config
 modelName = 'all-MiniLM-L6-v2'
-minKeywordLen = 4  #Increased from 3 to reduce noise
+minKeywordLen = 4
 
-#Expanded stopwords to filter generic terms
+#Stopwords to filter generic terms
 stopwords = {
     'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
     'of', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
@@ -21,7 +21,7 @@ stopwords = {
     'same', 'than', 'too', 'very', 'just', 'being', 'doing', 'having'
 }
 
-#Keyword categories for better organization
+#Keyword categories
 categories = {
     'languages': {
         'python', 'java', 'javascript', 'typescript', 'c++', 'c#', 'ruby',
@@ -52,7 +52,7 @@ categories = {
     }
 }
 
-#Global model instance loaded lazily
+#Global model instance
 _model = None
 
 def loadModel():
@@ -74,7 +74,7 @@ def extractKeywords(text):
         token for token in tokens
         if (len(token) >= minKeywordLen and 
             token not in stopwords and
-            not token.isdigit())  #Remove pure numbers like "100", "9"
+            not token.isdigit())
     }
     return keywords
 
@@ -102,12 +102,21 @@ def categorizeKeywords(keywords):
     return result
 
 def getMatchScore(jobDesc, resumeText):
-    """Calculate semantic similarity and keyword overlap. Returns (score, matched, missing)."""
+    """
+    Calculate weighted score combining semantic similarity and keyword matching.
+    Returns (finalScore, matched, missing).
+    
+    Scoring strategy:
+    - Semantic similarity: 60% weight (overall content alignment)
+    - Keyword match: 40% weight (specific skills match)
+    - Only categorized keywords (languages, frameworks, tools, databases) count toward score
+    - Generic 'other' keywords shown but don't affect score
+    """
     
     m = loadModel()
     jobEmb = m.encode(jobDesc, convert_to_tensor=True)
     resumeEmb = m.encode(resumeText, convert_to_tensor=True)
-    score = util.pytorch_cos_sim(jobEmb, resumeEmb).item()
+    semanticScore = util.pytorch_cos_sim(jobEmb, resumeEmb).item()
     
     jobKeywords = extractKeywords(jobDesc)
     resumeKeywords = extractKeywords(resumeText)
@@ -115,4 +124,25 @@ def getMatchScore(jobDesc, resumeText):
     matched = jobKeywords & resumeKeywords
     missing = jobKeywords - resumeKeywords
     
-    return score, matched, missing
+    #Categorize to focus on important technical keywords
+    matchedCats = categorizeKeywords(matched)
+    missingCats = categorizeKeywords(missing)
+    
+    #Count only technical keywords (not generic 'other' category)
+    importantMatched = (len(matchedCats['languages']) + len(matchedCats['frameworks']) + 
+                       len(matchedCats['tools']) + len(matchedCats['databases']))
+    importantMissing = (len(missingCats['languages']) + len(missingCats['frameworks']) + 
+                       len(missingCats['tools']) + len(missingCats['databases']))
+    
+    #Calculate keyword match score (0-1)
+    totalImportant = importantMatched + importantMissing
+    if totalImportant > 0:
+        keywordScore = importantMatched / totalImportant
+    else:
+        #No technical keywords found, rely entirely on semantic score
+        keywordScore = semanticScore
+    
+    #Weighted combination: 60% semantic, 40% keyword matching
+    finalScore = (semanticScore * 0.6) + (keywordScore * 0.4)
+    
+    return finalScore, matched, missing

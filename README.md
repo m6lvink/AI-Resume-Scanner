@@ -1,6 +1,12 @@
 # Resume Matcher
 
-AI-powered resume analyzer that compares your resume against job descriptions using semantic similarity and keyword matching.
+Analyze how well your resume matches a job description using AI semantic similarity and keyword matching.
+
+## Architecture
+
+Frontend: HTML/CSS/JavaScript (vanilla)
+Backend: Python Flask REST API
+Model: sentence-transformers (MiniLM)
 
 ## Setup
 
@@ -12,60 +18,86 @@ First run downloads the AI model (80MB) - takes 10-20 seconds.
 
 ## Usage
 
-### Web UI
 ```bash
-streamlit run app.py
+python server.py
 ```
-Opens browser at `http://localhost:8501`
 
-Features:
+Open browser to `http://localhost:5000`
+
+1. Paste job description in left panel
+2. Drag and drop resume PDF in right panel (or click to browse)
+3. Click "Analyze Match"
+4. View results with categorized keywords
+5. Download results as text file
+
+## Features
+
 - Drag and drop PDF upload
-- Real-time match scoring
+- Real-time semantic analysis (0-100% match score)
+- Keyword extraction and matching
 - Categorized skills (languages, frameworks, tools, databases)
-- Visual progress bars and metrics
-- Download results as text file
+- Tabbed results view
+- Download results as text
 
-### Command Line
-```bash
-python main.py
+## API Endpoints
+
+### POST /api/analyze
+Analyze resume against job description
+
+Request (multipart/form-data):
+- `jobDesc`: Job description text
+- `resume`: PDF file
+
+Response (JSON):
+```json
+{
+  "score": 85.3,
+  "matched": ["python", "react", "docker"],
+  "missing": ["kubernetes", "terraform"],
+  "matchedCategories": {
+    "languages": ["python"],
+    "frameworks": ["react"],
+    "tools": ["docker"],
+    "databases": [],
+    "other": []
+  },
+  "missingCategories": {...}
+}
 ```
-- Paste job description (press ENTER twice to finish)
-- Enter path to PDF resume
-- View match score and keyword analysis
 
-## How It Works
+## File Structure
 
-1. PDF Parsing: Extracts text from resume PDF
-2. Semantic Analysis: Uses sentence transformers (MiniLM model) to calculate similarity score (0-100%)
-3. Keyword Matching: Extracts technical terms and compares job requirements vs resume
-4. Gap Analysis: Shows which skills you have and which are missing
-
-## Files
-
-- `app.py` - Streamlit web interface with drag-and-drop
-- `main.py` - Command line interface
-- `resumeParser.py` - PDF text extraction
-- `matcher.py` - AI scoring and keyword analysis
-- `requirements.txt` - Python dependencies
+```
+/project
+├── server.py              # Flask backend with API
+├── resumeParser.py        # PDF text extraction
+├── matcher.py             # AI scoring and keyword matching
+├── requirements.txt       # Python dependencies
+├── README.md             # This file
+├── static/
+│   ├── style.css         # All styling
+│   └── script.js         # Frontend logic
+└── templates/
+    └── index.html        # Main page
+```
 
 ## Performance
 
-- Web UI: 2-4 seconds per analysis (after model loads)
+- Analysis time: 2-4 seconds (after model loads)
 - Model load: 10-20 seconds on first run (cached after)
-- PDF parsing: <1 second for typical resumes
+- PDF parsing: <1 second
 - Max file size: 50MB
 
 ## Limitations
 
-- PDF only (no DOCX support yet)
+- PDF only (no DOCX)
 - Image-based/scanned PDFs need OCR (not included)
 - Encrypted PDFs not supported
-- English language only
+- English only
 
-## Tips
+## Score Interpretation
 
-- Use specific technical terms from job posting in resume
-- Add missing keywords naturally to your experience sections
-- 75%+ match = strong alignment
-- 60-75% = good match
-- <60% = consider tailoring resume more
+- 75%+ = Strong match
+- 60-75% = Good match
+- 45-60% = Moderate match
+- <45% = Weak match
