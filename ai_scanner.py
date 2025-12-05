@@ -1,24 +1,29 @@
 import google.generativeai as genai
+import time
+import re
+from google.api_core import exceptions as google_exceptions
 
-def scan_resume_with_ai(api_key, job_text, resume_text):
-    """
-    Sends the job and resume text to Google Gemini for deep analysis.
-    Returns a JSON string with score, missing skills, and improvement advice.
-    """
+def scanResumeWithAi(apiKey, jobText, resumeText):
+    if not apiKey or not isinstance(apiKey, str) or len(apiKey.strip()) == 0:
+        return None
+    if not jobText or len(str(jobText).strip()) == 0:
+        return None
+    if not resumeText or len(str(resumeText).strip()) == 0:
+        return None
     
-    # Configure the Cloud AI
-    genai.configure(api_key=api_key)
+    try:
+        genai.configure(api_key=apiKey)
+    except (ValueError, AttributeError):
+        return None
     
-    # Priority list of models to attempt 
-    models_to_try = [
+    modelsToTry = [
+        'gemini-1.5-flash',
+        'gemini-1.5-pro',
         'gemini-2.0-flash',
-        'gemini-2.5-flash',
-        'gemini-2.0-flash-lite',
-        'gemini-1.5-flash'
+        'gemini-2.0-flash-exp'
     ]
     
-    # We ask for a "strategic_analysis" to explain the score and an "improvement_plan" for actionable steps.
-    system_prompt = (
+    systemPrompt = (
         "You are an expert Career Coach and Technical Recruiter utilizing an advanced ATS (Applicant Tracking System). "
         "Your goal is to maximize the candidate's chances of getting an interview.\n\n"
         
@@ -45,32 +50,43 @@ def scan_resume_with_ai(api_key, job_text, resume_text):
         "4. IMPROVEMENT PLAN: Be specific. Don't just say 'Add more skills'. Say 'Explicitly mention experience with Docker in the Work History section'.\n"
     )
     
-    full_prompt = f"{system_prompt}\n\n=== JOB DESCRIPTION ===\n{job_text}\n\n=== RESUME ===\n{resume_text}"
+    fullPrompt = f"{systemPrompt}\n\n=== JOB DESCRIPTION ===\n{jobText}\n\n=== RESUME ===\n{resumeText}"
 
-    # Try models in order of priority
-    for model_name in models_to_try:
+    for modelName in modelsToTry:
         try:
-            ai_model = genai.GenerativeModel(model_name)
-            response = ai_model.generate_content(full_prompt)
+            aiModel = genai.GenerativeModel(modelName)
+            response = aiModel.generate_content(fullPrompt)
             
-            # Clean potential markdown formatting
-            clean_response = response.text.replace("```json", "").replace("```", "").strip()
-            return clean_response
+            if hasattr(response, 'text') and response.text:
+                cleanResponse = response.text.replace("```json", "").replace("```", "").strip()
+                return cleanResponse
 
-        except Exception:
+        except google_exceptions.ResourceExhausted as e:
+            retryDelay = 15
+            errorStr = str(e).lower()
+            if "retry in" in errorStr:
+                try:
+                    match = re.search(r'retry in ([\d.]+)s', errorStr)
+                    if match:
+                        retryDelay = max(15, int(float(match.group(1))) + 2)
+                except:
+                    pass
+            time.sleep(retryDelay)
+            continue
+        except (ValueError, AttributeError, TypeError, google_exceptions.GoogleAPIError):
             continue
             
-    # If we get here, all models failed D:
     return None
 
-def list_available_models(api_key):
-    """Helper to debug model availability"""
-    genai.configure(api_key=api_key)
+def listAvailableModels(apiKey):
+    if not apiKey or not isinstance(apiKey, str):
+        return ["Invalid API key"]
     try:
+        genai.configure(api_key=apiKey)
         available = []
         for m in genai.list_models():
             if 'generateContent' in m.supported_generation_methods:
                 available.append(m.name)
         return available
-    except Exception as e:
+    except (ValueError, AttributeError, Exception) as e:
         return [str(e)]

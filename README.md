@@ -1,31 +1,33 @@
 # AI Resume Scanner
 
-A CLI tool developed to analyze PDF resumes against job descriptions using Google's Gemini models.
+CLI tool that analyzes PDF resumes against job descriptions using Google Gemini models.
 
-## Dependencies
+## Requirements
 
-* Python 3.x
-* `pymupdf`
-* `beautifulsoup4`
-* `requests`
-* `google-generativeai`
+Python 3.x
+
+Required packages:
+- pymupdf
+- beautifulsoup4
+- requests
+- google-generativeai
 
 ## Installation
 
-1.  **Install libraries:**
-    ```bash
-    pip install pymupdf beautifulsoup4 requests google-generativeai
-    ```
+Install dependencies:
+```bash
+pip install pymupdf beautifulsoup4 requests google-generativeai
+```
 
-2.  **Configuration:**
-    * Rename `secrets_config.example.py` to `secrets_config.py`.
-    * Open the file and paste your Google API Key where indicated.
+Configure API key:
+1. Rename `secrets_config.example.py` to `secrets_config.py`
+2. Add your Google API key to the file
 
 ## Usage
 
-1.  **Preparation:** Ensure your Resume PDF is located in the same folder as these scripts.
-2.  **Run the script:**
-    ```bash
-    python main.py
-    ```
-3.  Follow the prompts to input the Job URL and your Resume filename.
+Run the script:
+```bash
+python main.py
+```
+
+Enter the job posting URL and resume PDF path when prompted.

@@ -1,17 +1,16 @@
 '''
-AI Resume Scanner - CLI Version utalizing Google API
+AI Resume Scanner - CLI Version utilizing Google API
 Author: MK
 '''
 import sys
 import os
-import fitz  # PyMuPDF
+import fitz
 import requests
 import re
 import json
 from bs4 import BeautifulSoup
-from ai_scanner import scan_resume_with_ai, list_available_models
+from ai_scanner import scanResumeWithAi, listAvailableModels
 
-# Try to import the secret key
 try:
     import secrets_config
 except ImportError:
@@ -19,14 +18,10 @@ except ImportError:
     print("   !! Please rename 'secrets_config.example.py' to 'secrets_config.py' and add your API key.\n")
     sys.exit(1)
 
-# --- UI HELPER FUNCTIONS ---
-
 def clearScreen():
-    # Function to clear the terminal screen for a fresh look
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def printHeader():
-    # ASCII Art Header - Fixed Width (76 chars)
     header = r"""
 // ========================================================================== //
 //                                                                            //
@@ -43,19 +38,11 @@ def printHeader():
     print(header.strip())
 
 def printSection(title):
-    # Function to print a header
-    # Format: __ [ TITLE ] ____
-    
     targetWidth = 76
     label = f" [ {title.upper()} ] "
-    
-    # Calculate padding: Width - length of "__" (2) - length of label
     paddingNeeded = targetWidth - 2 - len(label)
-    
-    # Safety check if title is too long
     if paddingNeeded < 0: 
         paddingNeeded = 0
-        
     padding = "_" * paddingNeeded
     print(f"\n__{label}{padding}")
 
@@ -68,40 +55,55 @@ def printError(text):
 def printInfo(text):
     print(f"   // {text}")
 
-
-# --- CORE FUNCTIONS ---
 def getPdfText(filePath):
-    # Function to extract text from PDF
-    if filePath is None:
+    if filePath is None or not isinstance(filePath, str) or len(filePath.strip()) == 0:
+        return ""
+    if not os.path.isfile(filePath) or os.path.isdir(filePath):
         return ""
 
     try:
         doc = fitz.open(filePath)
         textParts = []
-        
         for page in doc:
             text = page.get_text()
             textParts.append(text)
-        
         doc.close()
         return "\n".join(textParts)
-    except Exception:
+    except (fitz.FileDataError, IOError, OSError):
         return ""
 
 def getWebText(targetUrl):
-    # Function to scrape text 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1"
     }
 
     try:
-        response = requests.get(targetUrl, headers=headers)
+        response = requests.get(targetUrl, headers=headers, timeout=30, allow_redirects=True)
         if response.status_code != 200:
             return None
 
-        soupObject = BeautifulSoup(response.text, 'html.parser')
+        responseText = response.text.lower()
+        verificationIndicators = [
+            "captcha",
+            "verify you are human",
+            "please verify",
+            "access denied",
+            "blocked",
+            "cloudflare",
+            "checking your browser",
+            "unusual traffic"
+        ]
         
-        # Remove clutter
+        for indicator in verificationIndicators:
+            if indicator in responseText:
+                return "VERIFICATION_REQUIRED"
+
+        soupObject = BeautifulSoup(response.text, 'html.parser')
         badTags = ["script", "style", "nav", "footer", "header", "form", "button"]
         for tag in soupObject(badTags):
             tag.decompose()
@@ -109,20 +111,26 @@ def getWebText(targetUrl):
         cleanText = soupObject.get_text(separator=' ')
         cleanText = re.sub(r'\s+', ' ', cleanText).strip()
         
+        if len(cleanText) < 50:
+            return "VERIFICATION_REQUIRED"
+            
         return cleanText
 
-    except Exception:
+    except requests.RequestException:
         return None
 
 def main():
     isProgramRunning = True
     
-    # Initial Validation
-    if "YOUR_API_KEY" in secrets_config.GOOGLE_API_KEY or "PASTE_YOUR_REAL" in secrets_config.GOOGLE_API_KEY:
+    if not hasattr(secrets_config, 'GOOGLE_API_KEY') or secrets_config.GOOGLE_API_KEY is None:
+        printError("GOOGLE_API_KEY not found in 'secrets_config.py'.")
+        return
+    
+    apiKeyStr = str(secrets_config.GOOGLE_API_KEY)
+    if "YOUR_API_KEY" in apiKeyStr or "PASTE_YOUR_REAL" in apiKeyStr or len(apiKeyStr.strip()) < 20:
         printError("You have not updated 'secrets_config.py' with your real Google API key.")
         return
 
-    # Clear screen once at start
     clearScreen()
     printHeader()
 
@@ -134,15 +142,36 @@ def main():
         if len(jobUrl) == 0:
             printError("URL cannot be empty.")
             continue
+        if not jobUrl.startswith(('http://', 'https://')):
+            printError("URL must start with http:// or https://")
+            continue
 
         printInfo("Scraping Job Description...")
         jobDescription = getWebText(jobUrl)
         
-        if jobDescription is None:
-            printError("Failed to read URL.")
-            continue
+        if jobDescription == "VERIFICATION_REQUIRED":
+            printError("Website requires verification. Cannot scrape automatically.")
+            printInfo("Please copy and paste the job description manually.")
+            jobDescription = input("\n   >> Paste job description (press Enter when done): ").strip()
+            if len(jobDescription) < 50:
+                printError("Job description too short. Please try again.")
+                continue
+        elif jobDescription is None or len(jobDescription.strip()) == 0:
+            printError("Failed to read URL or URL returned empty content.")
+            printInfo("You can paste the job description manually instead.")
+            manualInput = input("   >> Paste job description manually? (y/n): ").lower()
+            if manualInput == "y":
+                jobDescription = input("\n   >> Paste job description (press Enter when done): ").strip()
+                if len(jobDescription) < 50:
+                    printError("Job description too short. Please try again.")
+                    continue
+            else:
+                continue
 
         resumePath = input("   >> Enter path to Resume PDF: ").strip()
+        if len(resumePath) == 0:
+            printError("Resume path cannot be empty.")
+            continue
         resumeContent = getPdfText(resumePath)
             
         if len(resumeContent) < 10:
@@ -151,23 +180,29 @@ def main():
 
         printInfo("Connecting to Neural Net...")
         
-        # Calls the function from 'ai_scanner.py'
-        aiResultJson = scan_resume_with_ai(secrets_config.GOOGLE_API_KEY, jobDescription, resumeContent)
+        aiResultJson = scanResumeWithAi(secrets_config.GOOGLE_API_KEY, jobDescription, resumeContent)
         
         if aiResultJson:
             try:
                 dataMap = json.loads(aiResultJson)
                 
                 score = dataMap.get("match_score", 0)
+                if not isinstance(score, (int, float)):
+                    score = 0
+                score = max(0, min(100, int(score)))
+                
                 missing = dataMap.get("missing_hard_skills", [])
+                if not isinstance(missing, list):
+                    missing = []
+                
                 analysis = dataMap.get("strategic_analysis", "No analysis provided.")
+                if not isinstance(analysis, str):
+                    analysis = "No analysis provided."
+                
                 plan = dataMap.get("improvement_plan", [])
+                if not isinstance(plan, list):
+                    plan = []
                 
-                # --- RESULTS DISPLAY ---
-                
-                # Score Bar
-                # [=============                  ] 45%
-                # The bar itself is 30 chars wide
                 barLength = 30
                 filledLength = int(barLength * score / 100)
                 bar = '=' * filledLength + ' ' * (barLength - filledLength)
@@ -197,7 +232,7 @@ def main():
         else:
             printError("Neural Net failed to respond.")
             printInfo("Available Models for your key:")
-            print(list_available_models(secrets_config.GOOGLE_API_KEY))
+            print(listAvailableModels(secrets_config.GOOGLE_API_KEY))
 
         print("\n// ============================================================== //")
         
@@ -206,7 +241,6 @@ def main():
             isProgramRunning = False
             print("\n   // SYSTEM SHUTDOWN //")
         else:
-            # Clear screen for next round to keep it fresh
             clearScreen()
             printHeader()
 
