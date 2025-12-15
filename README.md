@@ -11,17 +11,18 @@ Required packages:
 - beautifulsoup4
 - requests
 - google-generativeai
+- python-dotenv
 
 ## Installation
 
 Install dependencies:
 ```bash
-pip install pymupdf beautifulsoup4 requests google-generativeai
+pip install pymupdf beautifulsoup4 requests google-generativeai python-dotenv
 ```
 
 Configure API key:
-1. Rename `secrets_config.example.py` to `secrets_config.py`
-2. Add your Google API key to the file
+1. Copy `.env.example` to `.env`
+2. Add your Google API key to the `.env` file
 
 ## Usage
 

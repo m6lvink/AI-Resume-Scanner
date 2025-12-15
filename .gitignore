@@ -1,6 +1,4 @@
-secrets_config.py
 .env
-config.json
 
 __pycache__/
 *.py[cod]
@@ -9,9 +7,6 @@ __pycache__/
 venv/
 env/
 .venv/
-
-logs/
-*.log
 
 *.pdf
 temp/

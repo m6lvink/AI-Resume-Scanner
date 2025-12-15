@@ -9,13 +9,15 @@ import requests
 import re
 import json
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from ai_scanner import scanResumeWithAi, listAvailableModels
 
-try:
-    import secrets_config
-except ImportError:
-    print("\n   !! CRITICAL ERROR: 'secrets_config.py' not found.")
-    print("   !! Please rename 'secrets_config.example.py' to 'secrets_config.py' and add your API key.\n")
+load_dotenv()
+
+googleApiKey = os.getenv('GOOGLE_API_KEY')
+if not googleApiKey:
+    print("\n!! ERROR: 'GOOGLE_API_KEY' not found in '.env' file.")
+    print("!! Please copy '.env.example' to '.env' and add your API key.\n")
     sys.exit(1)
 
 def clearScreen():
@@ -47,13 +49,13 @@ def printSection(title):
     print(f"\n__{label}{padding}")
 
 def printSuccess(text):
-    print(f"   [+] {text}")
+    print(f"[+] {text}")
 
 def printError(text):
-    print(f"   [!] {text}")
+    print(f"[!] {text}")
 
 def printInfo(text):
-    print(f"   // {text}")
+    print(f"// {text}")
 
 def getPdfText(filePath):
     if filePath is None or not isinstance(filePath, str) or len(filePath.strip()) == 0:
@@ -122,13 +124,9 @@ def getWebText(targetUrl):
 def main():
     isProgramRunning = True
     
-    if not hasattr(secrets_config, 'GOOGLE_API_KEY') or secrets_config.GOOGLE_API_KEY is None:
-        printError("GOOGLE_API_KEY not found in 'secrets_config.py'.")
-        return
-    
-    apiKeyStr = str(secrets_config.GOOGLE_API_KEY)
+    apiKeyStr = str(googleApiKey)
     if "YOUR_API_KEY" in apiKeyStr or "PASTE_YOUR_REAL" in apiKeyStr or len(apiKeyStr.strip()) < 20:
-        printError("You have not updated 'secrets_config.py' with your real Google API key.")
+        printError("You have not updated '.env' with your real Google API key.")
         return
 
     clearScreen()
@@ -137,7 +135,7 @@ def main():
     while isProgramRunning:
         printSection("INPUT DATA")
         
-        jobUrl = input("\n   >> Enter Job Posting URL: ").strip()
+        jobUrl = input("\n>> Enter Job Posting URL: ").strip()
         
         if len(jobUrl) == 0:
             printError("URL cannot be empty.")
@@ -152,23 +150,23 @@ def main():
         if jobDescription == "VERIFICATION_REQUIRED":
             printError("Website requires verification. Cannot scrape automatically.")
             printInfo("Please copy and paste the job description manually.")
-            jobDescription = input("\n   >> Paste job description (press Enter when done): ").strip()
+            jobDescription = input("\n>> Paste job description (press Enter when done): ").strip()
             if len(jobDescription) < 50:
                 printError("Job description too short. Please try again.")
                 continue
         elif jobDescription is None or len(jobDescription.strip()) == 0:
             printError("Failed to read URL or URL returned empty content.")
             printInfo("You can paste the job description manually instead.")
-            manualInput = input("   >> Paste job description manually? (y/n): ").lower()
+            manualInput = input(">> Paste job description manually? (y/n): ").lower()
             if manualInput == "y":
-                jobDescription = input("\n   >> Paste job description (press Enter when done): ").strip()
+                jobDescription = input("\n>> Paste job description (press Enter when done): ").strip()
                 if len(jobDescription) < 50:
                     printError("Job description too short. Please try again.")
                     continue
             else:
                 continue
 
-        resumePath = input("   >> Enter path to Resume PDF: ").strip()
+        resumePath = input(">> Enter path to Resume PDF: ").strip()
         if len(resumePath) == 0:
             printError("Resume path cannot be empty.")
             continue
@@ -180,7 +178,7 @@ def main():
 
         printInfo("Connecting to Neural Net...")
         
-        aiResultJson = scanResumeWithAi(secrets_config.GOOGLE_API_KEY, jobDescription, resumeContent)
+        aiResultJson = scanResumeWithAi(googleApiKey, jobDescription, resumeContent)
         
         if aiResultJson:
             try:
@@ -208,22 +206,22 @@ def main():
                 bar = '=' * filledLength + ' ' * (barLength - filledLength)
                 
                 printSection("MATCH RESULTS")
-                print(f"\n   SCORE: [{bar}] {score}%")
+                print(f"\nSCORE: [{bar}] {score}%")
                 
                 printSection("ANALYSIS")
-                print(f"   // {analysis}")
+                print(f"// {analysis}")
 
                 printSection("MISSING CRITICAL SKILLS")
                 if len(missing) > 0:
                     for skill in missing:
-                        print(f"   [x] {skill}")
+                        print(f"[x] {skill}")
                 else:
                     printSuccess("No major hard skills missing. Clean sheet.")
 
                 printSection("IMPROVEMENT PLAN")
                 if len(plan) > 0:
                     for step in plan:
-                        print(f"   -> {step}")
+                        print(f"-> {step}")
                 else:
                     printSuccess("Resume is fully optimized for this role.")
                     
@@ -232,14 +230,14 @@ def main():
         else:
             printError("Neural Net failed to respond.")
             printInfo("Available Models for your key:")
-            print(listAvailableModels(secrets_config.GOOGLE_API_KEY))
+            print(listAvailableModels(googleApiKey))
 
         print("\n// ============================================================== //")
         
-        userChoice = input("\n   >> Analyze another? (y/n): ").lower()
+        userChoice = input("\n>> Analyze another? (y/n): ").lower()
         if userChoice != "y":
             isProgramRunning = False
-            print("\n   // SYSTEM SHUTDOWN //")
+            print("\n// SYSTEM SHUTDOWN //")
         else:
             clearScreen()
             printHeader()
