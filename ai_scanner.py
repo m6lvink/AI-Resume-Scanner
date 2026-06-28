@@ -69,7 +69,7 @@ def scanResumeWithAi(apiKey, jobText, resumeText):
                     match = re.search(r'retry in ([\d.]+)s', errorStr)
                     if match:
                         retryDelay = max(15, int(float(match.group(1))) + 2)
-                except:
+                except (ValueError, TypeError):
                     pass
             time.sleep(retryDelay)
             continue
