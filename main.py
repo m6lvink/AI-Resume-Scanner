@@ -158,7 +158,7 @@ def main():
         elif jobDescription is None or len(jobDescription.strip()) == 0:
             printError("Failed to read URL or URL returned empty content.")
             printInfo("You can paste the job description manually instead.")
-            manualInput = input(">> Paste job description manually? (y/n): ").lower()
+            manualInput = input(">> Paste job description manually? (y/n): ").strip().lower()
             if manualInput == "y":
                 jobDescription = input("\n>> Paste job description (press Enter when done): ").strip()
                 if len(jobDescription) < 50:
@@ -235,7 +235,7 @@ def main():
 
         print("\n// ============================================================== //")
         
-        userChoice = input("\n>> Analyze another? (y/n): ").lower()
+        userChoice = input("\n>> Analyze another? (y/n): ").strip().lower()
         if userChoice != "y":
             isProgramRunning = False
             print("\n// SYSTEM SHUTDOWN //")
