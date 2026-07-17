@@ -60,7 +60,7 @@ def printInfo(text):
 def getPdfText(filePath):
     if filePath is None or not isinstance(filePath, str) or len(filePath.strip()) == 0:
         return ""
-    filePath = os.path.normpath(os.path.expanduser(filePath.strip().strip('"').strip("'")))
+    filePath = os.path.normpath(os.path.expandvars(os.path.expanduser(filePath.strip().strip('"').strip("'"))))
     if not os.path.isfile(filePath) or os.path.isdir(filePath):
         return ""
 
