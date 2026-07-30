@@ -13,12 +13,18 @@ class FakePage:
         return "resume text"
 
 
+class BrokenPage:
+    def get_text(self):
+        raise RuntimeError("broken pdf")
+
+
 class FakeDoc(list):
-    def __init__(self):
-        super().__init__([FakePage()])
+    def __init__(self, *pages):
+        super().__init__(pages or [FakePage()])
+        self.closed = False
 
     def close(self):
-        pass
+        self.closed = True
 
 
 class GetPdfTextTests(unittest.TestCase):
@@ -36,6 +42,16 @@ class GetPdfTextTests(unittest.TestCase):
                     self.assertEqual(main.getPdfText(input_path), "resume text")
 
         mock_open.assert_called_once_with(expected_path)
+
+    def test_returns_empty_string_for_runtime_pdf_read_error(self):
+        fake_doc = FakeDoc(BrokenPage())
+
+        with mock.patch.object(main.os.path, "isfile", return_value=True):
+            with mock.patch.object(main.os.path, "isdir", return_value=False):
+                with mock.patch.object(main.fitz, "open", return_value=fake_doc):
+                    self.assertEqual(main.getPdfText("resume.pdf"), "")
+
+        self.assertTrue(fake_doc.closed)
 
 
 if __name__ == "__main__":

@@ -64,16 +64,19 @@ def getPdfText(filePath):
     if not os.path.isfile(filePath) or os.path.isdir(filePath):
         return ""
 
+    doc = None
     try:
         doc = fitz.open(filePath)
         textParts = []
         for page in doc:
             text = page.get_text()
             textParts.append(text)
-        doc.close()
         return "\n".join(textParts)
-    except (fitz.FileDataError, IOError, OSError):
+    except (fitz.FileDataError, IOError, OSError, RuntimeError):
         return ""
+    finally:
+        if doc is not None:
+            doc.close()
 
 def getWebText(targetUrl):
     headers = {
